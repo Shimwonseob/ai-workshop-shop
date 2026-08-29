@@ -104,7 +104,8 @@ async function productIntro(request, env) {
       .filter((sentence) => /[A-Za-z]/.test(sentence) && !/[\uAC00-\uD7AF]/.test(sentence))
       .map((sentence) => sentence
         .replace(/\bKorean(?:-style)?\s*/gi, "")
-        .replace(/\b(?:satisfying|one-bite|delicious|premium|traditional|homemade)\s*/gi, "")
+        .replace(/\bare cooked together to create(?: a)? meal\b/gi, "are included in the meal")
+        .replace(/\b(?:satisfying|one-bite|delicious|premium|traditional|homemade|convenient|easy-to-eat|tangled|glistening|crunchy|sticky)\s*/gi, "")
         .replace(/\s{2,}/g, " ")
         .replace(/\s+([,.!?])/g, "$1")
         .trim())
