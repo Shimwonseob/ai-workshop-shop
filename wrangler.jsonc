@@ -13,7 +13,7 @@
     {
       "binding": "DB",
       "database_name": "ai-workshop-shop-db",
-      "database_id": "00000000-0000-0000-0000-000000000000",
+      "database_id": "3264aaa1-8301-449a-b490-77eab5a78d41",
       "migrations_dir": "migrations"
     }
   ]
