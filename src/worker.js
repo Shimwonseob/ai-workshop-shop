@@ -17,7 +17,10 @@ async function handleApi(request, env, url) {
   if (url.pathname === "/api/auth/login" && method === "POST") return login(request, env, url);
   if (url.pathname === "/api/auth/logout" && method === "POST") return logout(request, env, url);
   if (url.pathname === "/api/auth/me" && method === "GET") return me(request, env);
+  if (url.pathname === "/api/payments/config" && method === "GET") return paymentConfig(env);
   const protectedSession = await requireAuth(request, env);
+  if (method === "GET" && url.pathname === "/api/orders") { if (!protectedSession) return json({ error: "login required" }, 401); const { results } = await env.DB.prepare("SELECT id, subtotal, discount_total, shipping_fee, total, status, payment_method, paid_at, created_at FROM orders WHERE session_id = ? ORDER BY created_at DESC").bind(protectedSession.id).all(); return json({ orders: results }); }
+  if (method === "POST" && url.pathname === "/api/payments/confirm") { if (!protectedSession) return json({ error: "login required" }, 401); return confirmPayment(request, env, protectedSession); }
   if (!protectedSession && (url.pathname.startsWith("/api/cart") || url.pathname.startsWith("/api/orders"))) return json({ error: "?棺??짆??嶺뚮ㅎ?닻???ш끽維???筌뤾퍓???" }, 401); const productMatch = url.pathname.match(/^\/api\/products\/(\d+)$/); const cartItemMatch = url.pathname.match(/^\/api\/cart\/(\d+)$/); const orderMatch = url.pathname.match(/^\/api\/orders\/([0-9a-f-]+)$/i);
   if (method === "GET" && url.pathname === "/api/categories") { const { results } = await env.DB.prepare("SELECT c.name AS category, COUNT(p.id) AS count FROM categories c LEFT JOIN products p ON p.category_id = c.id AND p.is_active = 1 WHERE c.is_active = 1 GROUP BY c.id, c.name ORDER BY c.sort_order").all(); return json({ categories: CATEGORIES.map((name) => ({ name, count: results.find((x) => x.category === name)?.count || 0 })) }); }
   if (method === "GET" && url.pathname === "/api/products") { const category = url.searchParams.get("category") || ""; const query = (url.searchParams.get("query") || "").trim().slice(0, 80); const sort = url.searchParams.get("sort") || "recommended"; if (category && !CATEGORIES.includes(category)) return json({ error: "?????????? ??? ?????筌뤾퍓愿???????釉랁닑???????????????癲?筌??" }, 400); const order = { recommended: "sales_rank ASC, id ASC", new: "is_new DESC, id DESC", sales: "sales_rank ASC, id ASC", price: "sale_price ASC, id ASC" }[sort] || "sales_rank ASC, id ASC"; const clauses = ["p.is_active = 1"]; const binds = []; if (category) { clauses.push("c.name = ?"); binds.push(category); } if (query) { clauses.push("(name LIKE ? OR short_description LIKE ? OR description LIKE ?)"); binds.push(`%${query}%`, `%${query}%`, `%${query}%`); } const { results } = await env.DB.prepare(`SELECT p.*, c.name AS category_name FROM products p LEFT JOIN categories c ON c.id = p.category_id WHERE ${clauses.join(" AND ")} ORDER BY ${order}`).bind(...binds).all(); return json({ products: results, count: results.length }); }
@@ -60,8 +63,35 @@ async function loginWithUser(env,url,email){const u=await env.DB.prepare("SELECT
 async function logout(request,env){const c=parseCookies(request.headers.get("Cookie")||"");if(c[SESSION_COOKIE])await env.DB.prepare("DELETE FROM guest_sessions WHERE id=?").bind(c[SESSION_COOKIE]).run();return json({ok:true})}
 async function me(request,env){const s=await requireAuth(request,env);return s?json({user:{id:s.user_id,email:s.email,name:s.name}}):json({user:null})}
 
+function paymentConfig(env) {
+  if (!env.TOSS_CLIENT_KEY) return json({ error: "Toss client key is not configured" }, 503);
+  return json({ clientKey: env.TOSS_CLIENT_KEY });
+}
 
-
+async function confirmPayment(request, env, session) {
+  const body = await readJson(request);
+  const orderId = String(body.orderId || "");
+  const paymentKey = String(body.paymentKey || "");
+  const amount = Number(body.amount);
+  if (!orderId || !paymentKey || !Number.isInteger(amount) || amount < 0) return json({ error: "invalid payment" }, 400);
+  const order = await env.DB.prepare("SELECT id, total, status FROM orders WHERE id = ? AND session_id = ?").bind(orderId, session.id).first();
+  if (!order) return json({ error: "order not found" }, 404);
+  if (order.status === "paid") return json({ ok: true, orderId, status: "paid" });
+  if (order.status !== "pending") return json({ error: "order is not payable" }, 409);
+  if (amount !== order.total) return json({ error: "amount mismatch" }, 400);
+  if (!env.TOSS_SECRET_KEY) return json({ error: "Toss secret key is not configured" }, 503);
+  const tossResponse = await fetch("https://api.tosspayments.com/v1/payments/confirm", {
+    method: "POST",
+    headers: { "Authorization": `Basic ${btoa(`${env.TOSS_SECRET_KEY}:`)}`, "Content-Type": "application/json", "Idempotency-Key": orderId },
+    body: JSON.stringify({ paymentKey, orderId, amount }),
+  });
+  const tossData = await tossResponse.json();
+  if (!tossResponse.ok) return json({ error: tossData.message || "payment approval failed", code: tossData.code }, tossResponse.status);
+  const method = typeof tossData.method === "string" ? tossData.method : null;
+  const updated = await env.DB.prepare("UPDATE orders SET status = 'paid', payment_key = ?, payment_method = ?, paid_at = CURRENT_TIMESTAMP WHERE id = ? AND session_id = ? AND status = 'pending'").bind(paymentKey, method, orderId, session.id).run();
+  if (!updated.meta.changes) return json({ ok: true, orderId, status: "paid" });
+  return json({ ok: true, orderId, status: "paid" });
+}
 
 
 
