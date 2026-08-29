@@ -91,14 +91,15 @@ async function productIntro(request, env) {
   if (!id) return json({ error: "invalid product" }, 400);
   const product = await env.DB.prepare("SELECT name, short_description, description FROM products WHERE id = ? AND is_active = 1").bind(id).first();
   if (!product) return json({ error: "product not found" }, 404);
-  const prompt = `Translate the supplied product name and descriptions into a calm, factual English introduction. Return only the introduction itself as exactly two or three complete sentences of plain prose. Never output the product name on its own. Do not include headings, labels, notes, prefixes, or field names such as Translated, Translation, English, Introduction, Product name, Short description, Description, or Note. Do not infer or add cuisine, origin, ingredients, certifications, health claims, quantities, quality claims, or marketing phrases. Use only facts explicitly present in the supplied text. Product name: ${product.name}\nShort description: ${product.short_description || ""}\nDescription: ${product.description || ""}`;
-  const result = await env.AI.run("@cf/meta/llama-3.1-8b-instruct-fast", { prompt, max_tokens: 180 });
+  const prompt = `Translate the supplied product name and descriptions into a calm, factual English introduction. Return only the introduction itself as exactly two or three complete sentences of plain prose. Never output the product name on its own. Do not include headings, labels, notes, prefixes, or field names such as Translated, Translation, English, Introduction, Product name, Short description, Description, or Note. Do not infer or add any adjective, adverb, cuisine, origin, ingredients, certifications, health claims, quantities, quality claims, taste, aroma, texture, or marketing phrase. Use only direct facts explicitly present in the supplied text. Do not repeat a sentence or noun phrase. Product name: ${product.name}\nShort description: ${product.short_description || ""}\nDescription: ${product.description || ""}`;
+  const result = await env.AI.run("@cf/meta/llama-3.1-8b-instruct-fast", { prompt, max_tokens: 180, temperature: 0, top_p: 0.1 });
   let text = String(result?.response || result || "").replace(/\s+/g, " ").trim();
   text = text.replace(/(?:^|\s)(?:Translated|Translation|English(?:\s+Introduction)?|Introduction|Product name|Short description|Description|Note)\s*:?\s*(?=[A-Z])/gi, " ").trim();
   const candidates = (text.match(/[^.!?]+[.!?]+/g) || [])
     .filter((sentence) => /[A-Za-z]/.test(sentence) && !/[가-힣]/.test(sentence))
-    .filter((sentence) => !/\b(?:Korean-style|traditional|homemade|premium|delicious|family|healthy|organic|certified|free shipping)\b/i.test(sentence))
-    .map((sentence) => sentence.trim());
+    .filter((sentence) => !/\b(?:Korean-style|traditional|homemade|premium|delicious|family|healthy|organic|certified|free shipping|sweet|savory|spicy|aroma|texture|satisfying|one sitting)\b/i.test(sentence))
+    .map((sentence) => sentence.trim())
+    .filter((sentence) => !/[\uAC00-\uD7AF]/.test(sentence));
   const unique = [];
   for (const sentence of candidates) {
     const words = new Set(sentence.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim().split(/\s+/).filter(Boolean));
