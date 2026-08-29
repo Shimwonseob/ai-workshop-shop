@@ -21,7 +21,7 @@ async function attachAiIntro() {
   button.onclick = async () => {
     if (button.disabled) return;
     button.disabled = true;
-    button.textContent = 'Loading...';
+    button.textContent = '불러오는 중...';
     try {
       const response = await fetch('/api/ai/product-intro', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ productId: id }) });
       const data = await response.json();

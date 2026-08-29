@@ -93,10 +93,17 @@ async function productIntro(request, env) {
   if (!product) return json({ error: "product not found" }, 404);
   const prompt = `Write a calm, factual English introduction for an online food product. Use only the supplied name and descriptions. Do not add origin, ingredients, certifications, health claims, quantities, or other facts that are not explicitly supplied. Use no more than three short sentences. Product name: ${product.name}\nShort description: ${product.short_description || ""}\nDescription: ${product.description || ""}`;
   const result = await env.AI.run("@cf/meta/llama-3.1-8b-instruct-fast", { prompt, max_tokens: 180 });
-  const text = String(result?.response || result || "").replace(/\s+/g, " ").trim();
-  const sentences = text.match(/[^.!?]+[.!?]+/g)?.slice(0, 3).join(" ").trim() || text;
-  if (!sentences) return json({ error: "AI returned no text" }, 502);
-  return json({ intro: sentences });
+  let text = String(result?.response || result || "").replace(/\s+/g, " ").trim();
+  const marker = text.toLowerCase().lastIndexOf("translation:");
+  if (marker >= 0) text = text.slice(marker + "translation:".length).trim();
+  const sentences = (text.match(/[^.!?]+[.!?]+/g) || [])
+    .filter((sentence) => /[A-Za-z]/.test(sentence))
+    .slice(0, 3)
+    .join(" ")
+    .trim();
+  const intro = sentences || (/[A-Za-z]/.test(text) ? text : "");
+  if (!intro) return json({ error: "AI returned no text" }, 502);
+  return json({ intro });
 }
 
 async function confirmPayment(request, env, session) {
@@ -124,5 +131,3 @@ async function confirmPayment(request, env, session) {
   await env.DB.prepare("DELETE FROM cart_items WHERE session_id = ? AND product_id IN (SELECT product_id FROM order_items WHERE order_id = ?)").bind(session.id, orderId).run();
   return json({ ok: true, orderId, status: "paid" });
 }
-
-
