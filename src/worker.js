@@ -92,7 +92,7 @@ async function productIntro(request, env) {
   const product = await env.DB.prepare("SELECT name, short_description, description FROM products WHERE id = ? AND is_active = 1").bind(id).first();
   if (!product) return json({ error: "product not found" }, 404);
   const prompt = `Write a calm, factual English introduction for an online food product. Use only the supplied name and descriptions. Do not add origin, ingredients, certifications, health claims, quantities, or other facts that are not explicitly supplied. Use no more than three short sentences. Product name: ${product.name}\nShort description: ${product.short_description || ""}\nDescription: ${product.description || ""}`;
-  const result = await env.AI.run("@cf/meta/llama-3.1-8b-instruct", { prompt, max_tokens: 180 });
+  const result = await env.AI.run("@cf/meta/llama-3.1-8b-instruct-fast", { prompt, max_tokens: 180 });
   const text = String(result?.response || result || "").replace(/\s+/g, " ").trim();
   const sentences = text.match(/[^.!?]+[.!?]+/g)?.slice(0, 3).join(" ").trim() || text;
   if (!sentences) return json({ error: "AI returned no text" }, 502);
@@ -124,6 +124,5 @@ async function confirmPayment(request, env, session) {
   await env.DB.prepare("DELETE FROM cart_items WHERE session_id = ? AND product_id IN (SELECT product_id FROM order_items WHERE order_id = ?)").bind(session.id, orderId).run();
   return json({ ok: true, orderId, status: "paid" });
 }
-
 
 
