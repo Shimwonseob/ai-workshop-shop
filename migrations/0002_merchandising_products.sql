@@ -1,61 +1,36 @@
-PRAGMA foreign_keys = OFF;
-
-CREATE TABLE products_new (
-  id INTEGER PRIMARY KEY,
-  name TEXT NOT NULL,
-  price INTEGER NOT NULL DEFAULT 0,
-  description TEXT NOT NULL DEFAULT '',
-  category TEXT NOT NULL,
-  image_url TEXT NOT NULL,
-  original_price INTEGER NOT NULL DEFAULT 0,
-  sale_price INTEGER NOT NULL DEFAULT 0,
-  discount_rate INTEGER NOT NULL DEFAULT 0,
-  short_description TEXT NOT NULL DEFAULT '',
-  selling_unit TEXT NOT NULL DEFAULT '',
-  weight TEXT NOT NULL DEFAULT '',
-  shipping_type TEXT NOT NULL DEFAULT '상온',
-  badge TEXT NOT NULL DEFAULT '',
-  coupon_label TEXT NOT NULL DEFAULT '',
-  review_count INTEGER NOT NULL DEFAULT 0,
-  is_new INTEGER NOT NULL DEFAULT 0,
-  is_best INTEGER NOT NULL DEFAULT 0,
-  is_special INTEGER NOT NULL DEFAULT 0,
-  sales_rank INTEGER NOT NULL DEFAULT 9999,
-  is_active INTEGER NOT NULL DEFAULT 1
-);
-
-INSERT INTO products_new (id, name, price, description, category, image_url, original_price,
-  sale_price, short_description, is_active)
-SELECT id, name, price, description, '레거시', image_url, price, price, description, 0
-FROM products;
-
-DROP TABLE products;
-ALTER TABLE products_new RENAME TO products;
-
+ALTER TABLE products ADD COLUMN original_price INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE products ADD COLUMN sale_price INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE products ADD COLUMN discount_rate INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE products ADD COLUMN short_description TEXT NOT NULL DEFAULT '';
+ALTER TABLE products ADD COLUMN selling_unit TEXT NOT NULL DEFAULT '';
+ALTER TABLE products ADD COLUMN weight TEXT NOT NULL DEFAULT '';
+ALTER TABLE products ADD COLUMN shipping_type TEXT NOT NULL DEFAULT '';
+ALTER TABLE products ADD COLUMN badge TEXT NOT NULL DEFAULT '';
+ALTER TABLE products ADD COLUMN coupon_label TEXT NOT NULL DEFAULT '';
+ALTER TABLE products ADD COLUMN review_count INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE products ADD COLUMN is_new INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE products ADD COLUMN is_best INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE products ADD COLUMN is_special INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE products ADD COLUMN sales_rank INTEGER NOT NULL DEFAULT 9999;
+ALTER TABLE products ADD COLUMN is_active INTEGER NOT NULL DEFAULT 1;
+UPDATE products SET original_price=price,sale_price=price,short_description=description,is_active=0 WHERE id <= 8;
 ALTER TABLE orders ADD COLUMN subtotal INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE orders ADD COLUMN discount_total INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE orders ADD COLUMN shipping_fee INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE order_items ADD COLUMN original_price INTEGER NOT NULL DEFAULT 0;
-
-UPDATE orders SET subtotal = total, discount_total = 0, shipping_fee = 0 WHERE subtotal = 0;
-UPDATE order_items SET original_price = price WHERE original_price = 0;
-
-INSERT INTO products (id, name, price, description, category, image_url, original_price, sale_price,
-  discount_rate, short_description, selling_unit, weight, shipping_type, badge, coupon_label,
-  review_count, is_new, is_best, is_special, sales_rank, is_active) VALUES
-  (9, '통통새우 한가득 볶음밥', 5600, '탱글한 새우와 채소를 넣어 고슬하게 볶은 한 끼', '간편식', '/products/bboggmbab.png', 7000, 5600, 20, '탱글한 새우와 채소를 넣어 고슬하게 볶은 한 끼', '1팩', '300g', '냉동', '추천', '10% 쿠폰', 184, 0, 1, 0, 4, 1),
-  (10, '담백한 통밀 식빵', 5200, '고소한 통밀 풍미를 살린 부드러운 식빵', '베이커리', '/products/bread.png', 6500, 5200, 20, '고소한 통밀 풍미를 살린 부드러운 식빵', '1봉', '500g', '상온', '신상품', '', 96, 1, 0, 0, 8, 1),
-  (11, '매일 먹는 신선 달걀 10구', 9000, '아침 식사와 요리에 두루 쓰는 신선한 달걀', '신선식품', '/products/egg.png', 9000, 9000, 0, '아침 식사와 요리에 두루 쓰는 신선한 달걀', '1판', '10구', '냉장', '', '', 231, 0, 1, 0, 2, 1),
-  (12, '아삭한 국내산 양배추 한 통', 3600, '단단하고 싱싱한 국내산 양배추 한 통', '신선식품', '/products/farm.png', 4500, 3600, 20, '단단하고 싱싱한 국내산 양배추 한 통', '1통', '1.5kg 내외', '냉장', '오늘특가', '', 78, 0, 0, 1, 10, 1),
-  (13, '손질해 바로 쓰는 깐마늘', 5600, '껍질을 벗겨 요리에 바로 넣는 깐마늘', '신선식품', '/products/galrig.png', 7000, 5600, 20, '껍질을 벗겨 요리에 바로 넣는 깐마늘', '1팩', '200g', '냉장', '', '10% 쿠폰', 142, 0, 0, 0, 7, 1),
-  (14, '싱싱한 풋고추 한 팩', 4400, '아삭한 식감과 알싸한 맛의 풋고추', '신선식품', '/products/ggochu.png', 5500, 4400, 20, '아삭한 식감과 알싸한 맛의 풋고추', '1팩', '200g', '냉장', '신상품', '', 54, 1, 0, 0, 11, 1),
-  (15, '깊은 맛을 담은 깍두기', 8500, '아삭한 무의 식감과 깔끔한 양념이 어우러진 깍두기', '반찬', '/products/gimchi.png', 10000, 8500, 15, '아삭한 무의 식감과 깔끔한 양념이 어우러진 깍두기', '1통', '500g', '냉장', '인기', '최대 15% 쿠폰', 318, 0, 1, 0, 1, 1),
-  (16, '담백한 목장 우유', 3780, '매일 부담 없이 마시는 고소하고 담백한 우유', '신선식품', '/products/milk.png', 4200, 3780, 10, '매일 부담 없이 마시는 고소하고 담백한 우유', '1팩', '900mL', '냉장', '', '', 205, 0, 1, 0, 3, 1),
-  (17, '진한 풍미의 간편 짜장면', 6000, '진한 춘장 소스와 쫄깃한 면을 간편하게 즐기는 메뉴', '간편식', '/products/zzajang.png', 8000, 6000, 25, '진한 춘장 소스와 쫄깃한 면을 간편하게 즐기는 메뉴', '1팩', '2인분', '냉장', '추천', '10% 쿠폰', 167, 0, 0, 1, 6, 1),
-  (18, '얼큰한 해물 짬뽕', 6750, '얼큰한 국물과 풍성한 건더기를 담은 간편 짬뽕', '간편식', '/products/zzambbong.png', 9000, 6750, 25, '얼큰한 국물과 풍성한 건더기를 담은 간편 짬뽕', '1팩', '2인분', '냉장', '', '', 121, 0, 0, 1, 9, 1),
-  (19, '담백하게 즐기는 닭가슴살', 9600, '담백하고 간편하게 준비하는 닭가슴살', '간편식', '/products/zzizzi.png', 12000, 9600, 20, '담백하고 간편하게 준비하는 닭가슴살', '1팩', '500g', '냉동', '신상품', '최대 20% 쿠폰', 89, 1, 0, 0, 5, 1);
-
-CREATE INDEX IF NOT EXISTS idx_products_category_active ON products(category, is_active);
-CREATE INDEX IF NOT EXISTS idx_products_merchandising ON products(is_new, is_best, is_special);
-
-PRAGMA foreign_keys = ON;
+UPDATE orders SET subtotal=total WHERE subtotal=0;
+UPDATE order_items SET original_price=price WHERE original_price=0;
+INSERT OR IGNORE INTO products (id,name,price,description,category,image_url,original_price,sale_price,discount_rate,short_description,selling_unit,weight,shipping_type,badge,coupon_label,review_count,is_new,is_best,is_special,sales_rank,is_active) VALUES
+(9,'통통새우 한가득 볶음밥',5600,'탱글한 새우와 채소를 넣어 고슬하게 볶은 한 끼','간편식','/products/bboggmbab.png',7000,5600,20,'탱글한 새우와 채소를 넣어 고슬하게 볶은 한 끼','1팩','300g','냉동','추천','10% 쿠폰',184,0,1,0,4,1),
+(10,'담백한 통밀 식빵',5200,'고소한 통밀 풍미를 살린 부드러운 식빵','베이커리','/products/bread.png',6500,5200,20,'고소한 통밀 풍미를 살린 부드러운 식빵','1봉','500g','상온','신상품','',96,1,0,0,8,1),
+(11,'매일 먹는 신선 달걀 10구',9000,'아침 식사와 요리에 두루 쓰는 신선한 달걀','신선식품','/products/egg.png',9000,9000,0,'아침 식사와 요리에 두루 쓰는 신선한 달걀','1판','10구','냉장','', '',231,0,1,0,2,1),
+(12,'아삭한 국내산 양배추 한 통',3600,'단단하고 싱싱한 국내산 양배추 한 통','신선식품','/products/farm.png',4500,3600,20,'단단하고 싱싱한 국내산 양배추 한 통','1통','1.5kg 내외','냉장','오늘특가','',78,0,0,1,10,1),
+(13,'손질해 바로 쓰는 깐마늘',5600,'껍질을 벗겨 요리에 바로 넣는 깐마늘','신선식품','/products/galrig.png',7000,5600,20,'껍질을 벗겨 요리에 바로 넣는 깐마늘','1팩','200g','냉장','','10% 쿠폰',142,0,0,0,7,1),
+(14,'싱싱한 풋고추 한 팩',4400,'아삭한 식감과 알싸한 맛의 풋고추','신선식품','/products/ggochu.png',5500,4400,20,'아삭한 식감과 알싸한 맛의 풋고추','1팩','200g','냉장','신상품','',54,1,0,0,11,1),
+(15,'깊은 맛을 담은 깍두기',8500,'아삭한 무의 식감과 깔끔한 양념이 어우러진 깍두기','반찬','/products/gimchi.png',10000,8500,15,'아삭한 무의 식감과 깔끔한 양념이 어우러진 깍두기','1통','500g','냉장','인기','최대 15% 쿠폰',318,0,1,0,1,1),
+(16,'담백한 목장 우유',3780,'매일 부담 없이 마시는 고소하고 담백한 우유','신선식품','/products/milk.png',4200,3780,10,'매일 부담 없이 마시는 고소하고 담백한 우유','1팩','900mL','냉장','','',205,0,1,0,3,1),
+(17,'진한 풍미의 간편 짜장면',6000,'진한 춘장 소스와 쫄깃한 면을 간편하게 즐기는 메뉴','간편식','/products/zzajang.png',8000,6000,25,'진한 춘장 소스와 쫄깃한 면을 간편하게 즐기는 메뉴','1팩','2인분','냉장','추천','10% 쿠폰',167,0,0,1,6,1),
+(18,'얼큰한 해물 짬뽕',6750,'얼큰한 국물과 풍성한 건더기를 담은 간편 짬뽕','간편식','/products/zzambbong.png',9000,6750,25,'얼큰한 국물과 풍성한 건더기를 담은 간편 짬뽕','1팩','2인분','냉장','','',121,0,0,1,9,1),
+(19,'담백하게 즐기는 닭가슴살',9600,'담백하고 간편하게 준비하는 닭가슴살','간편식','/products/zzizzi.png',12000,9600,20,'담백하고 간편하게 준비하는 닭가슴살','1팩','500g','냉동','신상품','최대 20% 쿠폰',89,1,0,0,5,1);
+CREATE INDEX IF NOT EXISTS idx_products_active_category ON products(is_active,category);
+CREATE INDEX IF NOT EXISTS idx_products_merch ON products(is_active,is_new,is_best,is_special,sales_rank);
