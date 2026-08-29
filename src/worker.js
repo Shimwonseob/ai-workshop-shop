@@ -91,12 +91,15 @@ async function productIntro(request, env) {
   if (!id) return json({ error: "invalid product" }, 400);
   const product = await env.DB.prepare("SELECT name, short_description, description FROM products WHERE id = ? AND is_active = 1").bind(id).first();
   if (!product) return json({ error: "product not found" }, 404);
-  const prompt = `Translate the supplied product name and descriptions into a calm, factual English introduction. Return only the introduction itself as exactly two or three complete sentences of plain prose. Never output the product name on its own. Do not include headings, labels, notes, prefixes, or field names such as Translated, Translation, English, Introduction, Product name, Short description, Description, or Note. Do not infer or add any adjective, adverb, cuisine, origin, ingredients, certifications, health claims, quantities, quality claims, taste, aroma, texture, or marketing phrase. Use only direct facts explicitly present in the supplied text. Do not repeat a sentence or noun phrase. Product name: ${product.name}\nShort description: ${product.short_description || ""}\nDescription: ${product.description || ""}`;
+  const messages = [
+    { role: "system", content: "You translate Korean product information into plain English. Output exactly two short, complete sentences and nothing else. No title, label, product-name list, markdown, note, or preface. Use only facts stated in the user text. Never invent origin, ingredients, certification, health, taste, aroma, texture, quality, or marketing claims." },
+    { role: "user", content: `Product name: ${product.name}\nShort description: ${product.short_description || ""}\nDescription: ${product.description || ""}` },
+  ];
   let intro = "";
   for (let attempt = 0; attempt < 3 && !intro; attempt += 1) {
-    const result = await env.AI.run("@cf/meta/llama-3.1-8b-instruct-fast", { prompt, max_tokens: 180 });
+    const result = await env.AI.run("@cf/meta/llama-3.2-3b-instruct", { messages, max_tokens: 140, temperature: 0.1 });
     let text = String(result?.response || result || "").replace(/\s+/g, " ").trim();
-    text = text.replace(/(?:^|\s)(?:Translated|Translation|English(?:\s+Introduction)?|Introduction|Product name|Short description|Description|Note)\s*:?\s*(?=[A-Z])/gi, " ").trim();
+    text = text.replace(/```[\s\S]*?```/g, " ").replace(/(?:^|\s)(?:Translated|Translation|English(?:\s+Introduction)?|Introduction|Product name|Short description|Description|Note)\s*:?\s*(?=[A-Z])/gi, " ").trim();
     const candidates = (text.match(/[^.!?]+[.!?]+/g) || [])
       .filter((sentence) => /[A-Za-z]/.test(sentence) && !/[\uAC00-\uD7AF]/.test(sentence))
       .map((sentence) => sentence.trim());
@@ -108,7 +111,7 @@ async function productIntro(request, env) {
         const overlap = [...words].filter((word) => priorWords.has(word)).length;
         return overlap / Math.max(1, Math.min(words.size, priorWords.size)) >= 0.8;
       });
-      if (!duplicate) unique.push(sentence);
+      if (!duplicate && !/^Product\b/i.test(sentence)) unique.push(sentence);
       if (unique.length === 3) break;
     }
     if (unique.length >= 2) intro = unique.join(" ");
