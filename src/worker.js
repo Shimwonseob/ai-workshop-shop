@@ -97,7 +97,6 @@ async function productIntro(request, env) {
   text = text.replace(/(?:^|\s)(?:Translated|Translation|English(?:\s+Introduction)?|Introduction|Product name|Short description|Description|Note)\s*:?\s*(?=[A-Z])/gi, " ").trim();
   const candidates = (text.match(/[^.!?]+[.!?]+/g) || [])
     .filter((sentence) => /[A-Za-z]/.test(sentence) && !/[가-힣]/.test(sentence))
-    .filter((sentence) => !/\b(?:Korean-style|traditional|homemade|premium|delicious|family|healthy|organic|certified|free shipping|sweet|savory|spicy|aroma|texture|satisfying|one sitting)\b/i.test(sentence))
     .map((sentence) => sentence.trim())
     .filter((sentence) => !/[\uAC00-\uD7AF]/.test(sentence));
   const unique = [];
