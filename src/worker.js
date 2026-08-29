@@ -102,7 +102,13 @@ async function productIntro(request, env) {
     text = text.replace(/```[\s\S]*?```/g, " ").replace(/(?:^|\s)(?:Translated|Translation|English(?:\s+Introduction)?|Introduction|Product name|Short description|Description|Note)\s*:?\s*(?=[A-Z])/gi, " ").trim();
     const candidates = (text.match(/[^.!?]+[.!?]+/g) || [])
       .filter((sentence) => /[A-Za-z]/.test(sentence) && !/[\uAC00-\uD7AF]/.test(sentence))
-      .map((sentence) => sentence.trim());
+      .map((sentence) => sentence
+        .replace(/\bKorean(?:-style)?\s*/gi, "")
+        .replace(/\b(?:satisfying|one-bite|delicious|premium|traditional|homemade)\s*/gi, "")
+        .replace(/\s{2,}/g, " ")
+        .replace(/\s+([,.!?])/g, "$1")
+        .trim())
+      .filter((sentence) => /[A-Za-z]/.test(sentence));
     const unique = [];
     for (const sentence of candidates) {
       const words = new Set(sentence.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim().split(/\s+/).filter(Boolean));
