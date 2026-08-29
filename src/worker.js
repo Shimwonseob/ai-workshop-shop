@@ -92,20 +92,21 @@ async function productIntro(request, env) {
   const product = await env.DB.prepare("SELECT name, short_description, description FROM products WHERE id = ? AND is_active = 1").bind(id).first();
   if (!product) return json({ error: "product not found" }, 404);
   const messages = [
-    { role: "system", content: "You translate Korean product information into plain English. Output exactly two short, complete sentences and nothing else. No title, label, product-name list, markdown, note, or preface. Use only facts stated in the user text. Never invent origin, ingredients, certification, health, taste, aroma, texture, quality, or marketing claims." },
-    { role: "user", content: `Product name: ${product.name}\nShort description: ${product.short_description || ""}\nDescription: ${product.description || ""}` },
+    { role: "system", content: "Write a calm, factual English introduction for the food product described by the Korean source text. Return exactly 2 or 3 complete English sentences, with a period at the end of every sentence. Return only the introduction sentences as one paragraph. Do not write a title, label, heading, note, preface, translation marker, product-name list, markdown, or words such as Translated, Translation, English, Introduction, Product name, Short description, Description, or Note. Use only facts explicitly present in the source. Never invent origin, ingredients, certification, health benefits, taste, aroma, texture, quality, quantity, or marketing claims." },
+    { role: "user", content: `Source product information (Korean):\nname=${product.name}\nshort_description=${product.short_description || ""}\ndescription=${product.description || ""}\n\nWrite only 2 or 3 natural English sentences about this product.` },
   ];
   let intro = "";
   for (let attempt = 0; attempt < 3 && !intro; attempt += 1) {
     const result = await env.AI.run("@cf/meta/llama-3.2-3b-instruct", { messages, max_tokens: 140, temperature: 0.1 });
     let text = String(result?.response || result || "").replace(/\s+/g, " ").trim();
-    text = text.replace(/```[\s\S]*?```/g, " ").replace(/(?:^|\s)(?:Translated|Translation|English(?:\s+Introduction)?|Introduction|Product name|Short description|Description|Note)\s*:?\s*(?=[A-Z])/gi, " ").trim();
+    text = text.replace(/```[\s\S]*?```/g, " ").trim();
+    const forbiddenLabel = /\b(?:translated|translation|english(?:\s+introduction)?|introduction|product\s+name|short\s+description|description|note)\b\s*:*/gi;
+    if (forbiddenLabel.test(text)) {
+      continue;
+    }
     const candidates = (text.match(/[^.!?]+[.!?]+/g) || [])
       .filter((sentence) => /[A-Za-z]/.test(sentence) && !/[\uAC00-\uD7AF]/.test(sentence))
       .map((sentence) => sentence
-        .replace(/\bKorean(?:-style)?\s*/gi, "")
-        .replace(/\bare cooked together to create(?: a)? meal\b/gi, "are included in the meal")
-        .replace(/\b(?:satisfying|one-bite|delicious|premium|traditional|homemade|convenient|easy-to-eat|tangled|glistening|crunchy|sticky)\s*/gi, "")
         .replace(/\s{2,}/g, " ")
         .replace(/\s+([,.!?])/g, "$1")
         .trim())
@@ -121,7 +122,7 @@ async function productIntro(request, env) {
       if (!duplicate && !/^Product\b/i.test(sentence)) unique.push(sentence);
       if (unique.length === 3) break;
     }
-    if (unique.length >= 2) intro = unique.join(" ");
+    if (unique.length >= 2 && unique.length <= 3) intro = unique.join(" ");
   }
   if (!intro) return json({ error: "AI returned too few sentences" }, 502);
   return json({ intro });

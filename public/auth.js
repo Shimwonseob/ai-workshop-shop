@@ -36,14 +36,14 @@ function renderAuthMenu(user) {
   const menu = ensureAuthMenu();
   if (!menu) return;
   if (user) {
-    menu.innerHTML = '<a href="/mypage">' + labels.mypage + '</a><button id="header-logout" type="button">' + labels.logout + '</button>';
+    menu.innerHTML = '<a data-link href="/mypage">' + labels.mypage + '</a><button class="utility-button" id="header-logout" type="button">' + labels.logout + '</button>';
     menu.querySelector('#header-logout').onclick = async () => {
       await req('/api/auth/logout', { method: 'POST' });
       await refreshAuthMenu();
       if (location.pathname === '/mypage') location.href = '/';
     };
   } else {
-    menu.innerHTML = '<a href="/login">' + labels.login + '</a><a href="/signup">' + labels.signup + '</a>';
+    menu.innerHTML = '<a data-link href="/login">' + labels.login + '</a><a data-link href="/signup">' + labels.signup + '</a>';
   }
 }
 
@@ -59,7 +59,7 @@ async function refreshAuthMenu() {
 function renderAuthPage() {
   if (location.pathname === '/login' || location.pathname === '/signup') {
     const signup = location.pathname === '/signup';
-    root.innerHTML = '<section class="auth-card shell"><h1>' + (signup ? labels.signup : labels.login) + '</h1><form id="auth-form"><input name="email" type="email" placeholder="\uC774\uBA54\uC77C" required><input name="password" type="password" placeholder="\uBE44\uBC00\uBC88\uD638(8\uC790 \uC774\uC0C1)" minlength="8" required>' + (signup ? '<input name="name" placeholder="\uC774\uB984" required>' : '') + '<button class="primary">' + (signup ? '\uAC00\uC785\uD558\uAE30' : labels.login) + '</button></form><a data-link href="' + (signup ? '/login' : '/signup') + '">' + (signup ? labels.login : labels.signup) + '</a></section>';
+    root.innerHTML = '<section class="auth-card shell"><p class="eyebrow">NOURI ACCOUNT</p><h1>' + (signup ? labels.signup : labels.login) + '</h1><form id="auth-form"><input name="email" type="email" placeholder="\uC774\uBA54\uC77C" required><input name="password" type="password" placeholder="\uBE44\uBC00\uBC88\uD638(8\uC790 \uC774\uC0C1)" minlength="8" required>' + (signup ? '<input name="name" placeholder="\uC774\uB984" required>' : '') + '<button class="primary">' + (signup ? '\uAC00\uC785\uD558\uAE30' : labels.login) + '</button></form><a class="auth-switch" data-link href="' + (signup ? '/login' : '/signup') + '">' + (signup ? labels.login : labels.signup) + '</a></section>';
     document.querySelector('#auth-form').onsubmit = async event => {
       event.preventDefault();
       try {
@@ -74,10 +74,10 @@ function renderAuthPage() {
   if (location.pathname === '/mypage') {
     req('/api/auth/me').then(data => {
       if (!data.user) { location.href = '/login'; return; }
-      root.innerHTML = '<section class="shell auth-card"><h1>' + labels.mypage + '</h1><p>' + data.user.name + '\uB2D8</p><p>' + data.user.email + '</p><div id="my-orders"></div><button id="logout" class="primary">' + labels.logout + '</button></section>';
+      root.innerHTML = '<section class="shell auth-card mypage-card"><p class="eyebrow">NOURI ACCOUNT</p><h1>' + labels.mypage + '</h1><div class="profile-summary"><strong>' + data.user.name + '\uB2D8</strong><span>' + data.user.email + '</span></div><div id="my-orders"></div><button id="logout" class="primary">' + labels.logout + '</button></section>';
       req('/api/orders').then(orderData => {
         const list = orderData.orders || [];
-        document.querySelector('#my-orders').innerHTML = list.length ? '<h2>\uC8FC\uBB38 \uB0B4\uC5ED</h2>' + list.map(order => '<p>' + order.id.slice(0, 8) + ' · ' + (order.status === 'paid' ? '\uACB0\uC81C\uC644\uB8CC' : '\uACB0\uC81C\uB300\uAE30') + ' · ' + Number(order.total).toLocaleString('ko-KR') + '\uC6D0' + (order.status === 'pending' ? ' <a href="/cart?resumeOrder=' + encodeURIComponent(order.id) + '">\uACB0\uC81C \uACC4\uC18D\uD558\uAE30</a>' : '') + '</p>').join('') : '';
+        document.querySelector('#my-orders').innerHTML = list.length ? '<h2>\uC8FC\uBB38 \uB0B4\uC5ED</h2><div class="order-list">' + list.map(order => '<div class="order-summary"><span>' + order.id.slice(0, 8) + '</span><strong class="status-badge ' + (order.status === 'paid' ? 'paid' : 'pending') + '">' + (order.status === 'paid' ? '\uACB0\uC81C\uC644\uB8CC' : '\uACB0\uC81C\uB300\uAE30') + '</strong><b>' + Number(order.total).toLocaleString('ko-KR') + '\uC6D0</b>' + (order.status === 'pending' ? ' <a data-link href="/cart?resumeOrder=' + encodeURIComponent(order.id) + '">\uACB0\uC81C \uACC4\uC18D\uD558\uAE30</a>' : '') + '</div>').join('') + '</div>' : '<p class="muted">아직 주문 내역이 없습니다.</p>';
       });
       document.querySelector('#logout').onclick = async () => {
         await req('/api/auth/logout', { method: 'POST' });
