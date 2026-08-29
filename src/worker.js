@@ -91,21 +91,27 @@ async function productIntro(request, env) {
   if (!id) return json({ error: "invalid product" }, 400);
   const product = await env.DB.prepare("SELECT name, short_description, description FROM products WHERE id = ? AND is_active = 1").bind(id).first();
   if (!product) return json({ error: "product not found" }, 404);
-  const prompt = `Translate the supplied product name and descriptions into a calm, factual English introduction. Return only plain prose with no headings, labels, notes, prefixes, or field names. Do not infer or add cuisine, origin, ingredients, certifications, health claims, quantities, quality claims, or marketing phrases. Use only facts explicitly present in the supplied text. Use no more than three complete sentences. Product name: ${product.name}\nShort description: ${product.short_description || ""}\nDescription: ${product.description || ""}`;
+  const prompt = `Translate the supplied product name and descriptions into a calm, factual English introduction. Return only the introduction itself as exactly two or three complete sentences of plain prose. Never output the product name on its own. Do not include headings, labels, notes, prefixes, or field names such as Translated, Translation, English, Introduction, Product name, Short description, Description, or Note. Do not infer or add cuisine, origin, ingredients, certifications, health claims, quantities, quality claims, or marketing phrases. Use only facts explicitly present in the supplied text. Product name: ${product.name}\nShort description: ${product.short_description || ""}\nDescription: ${product.description || ""}`;
   const result = await env.AI.run("@cf/meta/llama-3.1-8b-instruct-fast", { prompt, max_tokens: 180 });
   let text = String(result?.response || result || "").replace(/\s+/g, " ").trim();
-  const marker = text.toLowerCase().lastIndexOf("translation:");
-  if (marker >= 0) text = text.slice(marker + "translation:".length).trim();
-  text = text.replace(/\b(?:Product name|Short description|Description|Note)\s*:\s*/gi, "").trim();
-  const sentences = (text.match(/[^.!?]+[.!?]+/g) || [])
+  text = text.replace(/(?:^|\s)(?:Translated|Translation|English(?:\s+Introduction)?|Introduction|Product name|Short description|Description|Note)\s*:?\s*(?=[A-Z])/gi, " ").trim();
+  const candidates = (text.match(/[^.!?]+[.!?]+/g) || [])
     .filter((sentence) => /[A-Za-z]/.test(sentence) && !/[가-힣]/.test(sentence))
     .filter((sentence) => !/\b(?:Korean-style|traditional|homemade|premium|delicious|family|healthy|organic|certified|free shipping)\b/i.test(sentence))
-    .slice(0, 3)
-    .join(" ")
-    .trim();
-  const intro = sentences || (/[A-Za-z]/.test(text) ? text : "");
-  if (!intro) return json({ error: "AI returned no text" }, 502);
-  return json({ intro });
+    .map((sentence) => sentence.trim());
+  const unique = [];
+  for (const sentence of candidates) {
+    const words = new Set(sentence.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim().split(/\s+/).filter(Boolean));
+    const duplicate = unique.some((previous) => {
+      const priorWords = new Set(previous.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim().split(/\s+/).filter(Boolean));
+      const overlap = [...words].filter((word) => priorWords.has(word)).length;
+      return overlap / Math.max(1, Math.min(words.size, priorWords.size)) >= 0.8;
+    });
+    if (!duplicate) unique.push(sentence);
+    if (unique.length === 3) break;
+  }
+  if (unique.length < 2) return json({ error: "AI returned too few sentences" }, 502);
+  return json({ intro: unique.join(" ") });
 }
 
 async function confirmPayment(request, env, session) {
