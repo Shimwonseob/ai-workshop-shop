@@ -1,4 +1,7 @@
 const root = document.querySelector('#app');
+document.title = 'Nouri';
+const brand = document.querySelector('.brand');
+if (brand) { brand.textContent = 'Nouri'; brand.style.fontStyle = 'italic'; }
 const req = (url, options) => fetch(url, {
   headers: options?.body ? { 'Content-Type': 'application/json' } : {},
   ...options,

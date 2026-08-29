@@ -68,7 +68,7 @@ async function setupPayment() {
         if (!orderResponse.ok) throw Error(order.error || 'order failed');
         orderId = order.orderId;
       }
-      await widgets.requestPayment({ orderId, orderName: '\uC1FC\uD551\uBAB0 \uC8FC\uBB38', successUrl: `${location.origin}/cart`, failUrl: `${location.origin}/cart` });
+      await widgets.requestPayment({ orderId, orderName: 'Nouri \uC8FC\uBB38', successUrl: `${location.origin}/cart`, failUrl: `${location.origin}/cart` });
     };
   } catch (error) {
     button.textContent = paymentText.loading;

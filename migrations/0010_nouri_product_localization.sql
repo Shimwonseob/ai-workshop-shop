@@ -1,0 +1,11 @@
+UPDATE products SET name = '통통새우 한가득 볶음밥', description = '탱글탱글한 새우와 고슬고슬한 밥을 담아 간편하게 즐기는 볶음밥입니다.', short_description = '통통한 새우와 고슬한 밥으로 완성한 든든한 한 끼' WHERE id = 9 AND is_active = 1;
+UPDATE products SET name = '담백한 통밀 식빵', description = '고소한 통밀을 담아 담백하게 구운 식빵으로 매일 아침 부담 없이 즐길 수 있습니다.', short_description = '고소한 통밀의 풍미를 담은 부드러운 식빵' WHERE id = 10 AND is_active = 1;
+UPDATE products SET name = '매일 먹는 신선 달걀 10구', description = '신선하게 선별한 달걀 열 알을 담아 다양한 요리에 활용하기 좋습니다.', short_description = '매일의 식탁에 어울리는 신선한 달걀' WHERE id = 11 AND is_active = 1;
+UPDATE products SET name = '아삭한 국내산 양배추 한 통', description = '아삭한 식감과 은은한 단맛이 좋은 국내산 양배추 한 통입니다.', short_description = '아삭하고 달큰한 국내산 양배추' WHERE id = 12 AND is_active = 1;
+UPDATE products SET name = '손질해 바로 쓰는 깐마늘', description = '번거로운 손질 없이 요리에 바로 넣어 쓸 수 있도록 깔끔하게 손질했습니다.', short_description = '요리에 바로 넣는 간편 손질 깐마늘' WHERE id = 13 AND is_active = 1;
+UPDATE products SET name = '싱싱한 풋고추 한 팩', description = '싱싱한 풋고추를 한 팩에 담아 아삭한 식감과 알싸한 풍미를 더해줍니다.', short_description = '아삭한 식감과 산뜻한 매운맛의 풋고추' WHERE id = 14 AND is_active = 1;
+UPDATE products SET name = '깊은 맛을 담은 깍두기', description = '아삭한 무에 양념을 정성껏 버무려 깊고 시원한 맛을 담은 깍두기입니다.', short_description = '아삭한 무와 깊은 양념의 깍두기' WHERE id = 15 AND is_active = 1;
+UPDATE products SET name = '담백한 목장 우유', description = '매일 마시기 좋은 부드럽고 담백한 풍미의 목장 우유입니다.', short_description = '부드럽고 고소한 풍미의 신선 우유' WHERE id = 16 AND is_active = 1;
+UPDATE products SET name = '진한 풍미의 간편 짜장면', description = '진한 짜장 소스와 쫄깃한 면을 간편하게 즐길 수 있는 한 끼 메뉴입니다.', short_description = '진한 소스와 쫄깃한 면으로 즐기는 간편식' WHERE id = 17 AND is_active = 1;
+UPDATE products SET name = '얼큰한 해물 짬뽕', description = '얼큰하고 시원한 국물에 해물 풍미를 더한 간편 짬뽕입니다.', short_description = '얼큰하고 시원한 해물 풍미의 짬뽕' WHERE id = 18 AND is_active = 1;
+UPDATE products SET name = '담백하게 즐기는 닭가슴살', description = '담백하고 깔끔한 맛으로 식단 관리와 든든한 한 끼에 잘 어울리는 닭가슴살입니다.', short_description = '간편하게 준비하는 담백한 닭가슴살' WHERE id = 19 AND is_active = 1;
