@@ -107,10 +107,13 @@ async function productIntro(request, env) {
     const candidates = (text.match(/[^.!?]+[.!?]+/g) || [])
       .filter((sentence) => /[A-Za-z]/.test(sentence) && !/[\uAC00-\uD7AF]/.test(sentence))
       .map((sentence) => sentence
+        .replace(/\b(?:Korean-style|boiled|generous|succulent|tender|crunchy|satisfying|filling|convenient|easy-to-enjoy|delicious|premium|traditional|homemade|flavorful|hearty|juicy|savory|slightly|abundant)\b/gi, "")
         .replace(/\s{2,}/g, " ")
         .replace(/\s+([,.!?])/g, "$1")
+        .replace(/\b(a|an)\s+(?:and|,)/gi, "$1")
+        .replace(/\b(?:a|an)\s+(?:meal|option)\s+for\s+enjoying\s+a\s+meal\b/gi, "a meal")
         .trim())
-      .filter((sentence) => /[A-Za-z]/.test(sentence));
+      .filter((sentence) => /[A-Za-z]/.test(sentence) && /\b(?:is|are|has|have|contains|includes|made|cooked|prepared|combines|features|uses|offers|provides|comes|can|enjoy)\b/i.test(sentence));
     const unique = [];
     for (const sentence of candidates) {
       const words = new Set(sentence.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim().split(/\s+/).filter(Boolean));
