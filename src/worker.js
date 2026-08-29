@@ -111,6 +111,9 @@ async function productIntro(request, env) {
         .replace(/\s{2,}/g, " ")
         .replace(/\s+([,.!?])/g, "$1")
         .replace(/\b(a|an)\s+(?:and|,)/gi, "$1")
+        .replace(/\ba amount of ([^.?!]+)[.?!]/gi, "an amount of $1.")
+        .replace(/\bIt is served with an amount of ([^.?!]+)\./gi, "It contains $1.")
+        .replace(/\ba bowl of rice\b/gi, "rice")
         .replace(/\b(?:a|an)\s+(?:meal|option)\s+for\s+enjoying\s+a\s+meal\b/gi, "a meal")
         .trim())
       .filter((sentence) => /[A-Za-z]/.test(sentence) && /\b(?:is|are|has|have|contains|includes|made|cooked|prepared|combines|features|uses|offers|provides|comes|can|enjoy)\b/i.test(sentence));
