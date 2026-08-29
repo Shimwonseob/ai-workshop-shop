@@ -21,6 +21,7 @@ async function handleApi(request, env, url) {
   const protectedSession = await requireAuth(request, env);
   if (method === "GET" && url.pathname === "/api/orders") { if (!protectedSession) return json({ error: "login required" }, 401); const { results } = await env.DB.prepare("SELECT id, subtotal, discount_total, shipping_fee, total, status, payment_method, paid_at, created_at FROM orders WHERE session_id = ? ORDER BY created_at DESC").bind(protectedSession.id).all(); return json({ orders: results }); }
   if (method === "POST" && url.pathname === "/api/payments/confirm") { if (!protectedSession) return json({ error: "login required" }, 401); return confirmPayment(request, env, protectedSession); }
+  if (method === "POST" && url.pathname === "/api/orders") { if (!protectedSession) return json({ error: "login required" }, 401); return createOrder(request, env, protectedSession); }
   if (!protectedSession && (url.pathname.startsWith("/api/cart") || url.pathname.startsWith("/api/orders"))) return json({ error: "?棺??짆??嶺뚮ㅎ?닻???ш끽維???筌뤾퍓???" }, 401); const productMatch = url.pathname.match(/^\/api\/products\/(\d+)$/); const cartItemMatch = url.pathname.match(/^\/api\/cart\/(\d+)$/); const orderMatch = url.pathname.match(/^\/api\/orders\/([0-9a-f-]+)$/i);
   if (method === "GET" && url.pathname === "/api/categories") { const { results } = await env.DB.prepare("SELECT c.name AS category, COUNT(p.id) AS count FROM categories c LEFT JOIN products p ON p.category_id = c.id AND p.is_active = 1 WHERE c.is_active = 1 GROUP BY c.id, c.name ORDER BY c.sort_order").all(); return json({ categories: CATEGORIES.map((name) => ({ name, count: results.find((x) => x.category === name)?.count || 0 })) }); }
   if (method === "GET" && url.pathname === "/api/products") { const category = url.searchParams.get("category") || ""; const query = (url.searchParams.get("query") || "").trim().slice(0, 80); const sort = url.searchParams.get("sort") || "recommended"; if (category && !CATEGORIES.includes(category)) return json({ error: "?????????? ??? ?????筌뤾퍓愿???????釉랁닑???????????????癲?筌??" }, 400); const order = { recommended: "sales_rank ASC, id ASC", new: "is_new DESC, id DESC", sales: "sales_rank ASC, id ASC", price: "sale_price ASC, id ASC" }[sort] || "sales_rank ASC, id ASC"; const clauses = ["p.is_active = 1"]; const binds = []; if (category) { clauses.push("c.name = ?"); binds.push(category); } if (query) { clauses.push("(name LIKE ? OR short_description LIKE ? OR description LIKE ?)"); binds.push(`%${query}%`, `%${query}%`, `%${query}%`); } const { results } = await env.DB.prepare(`SELECT p.*, c.name AS category_name FROM products p LEFT JOIN categories c ON c.id = p.category_id WHERE ${clauses.join(" AND ")} ORDER BY ${order}`).bind(...binds).all(); return json({ products: results, count: results.length }); }
@@ -68,6 +69,20 @@ function paymentConfig(env) {
   return json({ clientKey: env.TOSS_CLIENT_KEY });
 }
 
+async function createOrder(request, env, session) {
+  const body = await readJson(request);
+  const selected = Array.isArray(body.itemIds) && body.itemIds.length ? body.itemIds.map(Number).filter(Number.isInteger) : null;
+  const cart = await readCart(env, session.id, selected);
+  if (!cart.items.some(item => !item.unavailable)) return json({ error: "cart is empty" }, 400);
+  const pending = await env.DB.prepare("SELECT id, total FROM orders WHERE session_id = ? AND status = 'pending' ORDER BY created_at DESC LIMIT 1").bind(session.id).first();
+  if (pending) return json({ orderId: pending.id, amount: pending.total, reused: true }, 200);
+  const orderId = crypto.randomUUID();
+  const available = cart.items.filter(item => !item.unavailable);
+  const statements = [env.DB.prepare("INSERT INTO orders (id, session_id, subtotal, discount_total, shipping_fee, total, status) VALUES (?, ?, ?, ?, ?, ?, 'pending')").bind(orderId, session.id, cart.subtotal, cart.discountTotal, cart.shippingFee, cart.total), ...available.map(item => env.DB.prepare("INSERT INTO order_items (order_id, product_id, product_name, qty, price, original_price) VALUES (?, ?, ?, ?, ?, ?)").bind(orderId, item.product_id, item.name, item.qty, item.sale_price, item.original_price))];
+  await env.DB.batch(statements);
+  return json({ orderId, amount: cart.total }, 201);
+}
+
 async function confirmPayment(request, env, session) {
   const body = await readJson(request);
   const orderId = String(body.orderId || "");
@@ -90,10 +105,9 @@ async function confirmPayment(request, env, session) {
   const method = typeof tossData.method === "string" ? tossData.method : null;
   const updated = await env.DB.prepare("UPDATE orders SET status = 'paid', payment_key = ?, payment_method = ?, paid_at = CURRENT_TIMESTAMP WHERE id = ? AND session_id = ? AND status = 'pending'").bind(paymentKey, method, orderId, session.id).run();
   if (!updated.meta.changes) return json({ ok: true, orderId, status: "paid" });
+  await env.DB.prepare("DELETE FROM cart_items WHERE session_id = ? AND product_id IN (SELECT product_id FROM order_items WHERE order_id = ?)").bind(session.id, orderId).run();
   return json({ ok: true, orderId, status: "paid" });
 }
-
-
 
 
 

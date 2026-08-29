@@ -35,8 +35,15 @@ async function setupPayment() {
   if (!summary) { paymentSetupStarted = false; return; }
   if (summary.querySelector('#toss-pay-button') || paymentSetupStarted) return;
   paymentSetupStarted = true;
+  const resumeOrderId = new URLSearchParams(location.search).get('resumeOrder');
   const cart = await fetch('/api/cart').then(r => r.json());
-  if (!cart.items?.some(item => !item.unavailable)) return;
+  let payableAmount = cart.total;
+  if (resumeOrderId) {
+    const orderResponse = await fetch('/api/orders/' + encodeURIComponent(resumeOrderId));
+    const orderData = await orderResponse.json();
+    if (!orderResponse.ok || orderData.order?.status !== 'pending') { paymentSetupStarted = false; return; }
+    payableAmount = orderData.order.total;
+  } else if (!cart.items?.some(item => !item.unavailable)) { paymentSetupStarted = false; return; }
   const box = document.createElement('div');
   box.className = 'payment-widget';
   box.innerHTML = '<div id="payment-methods"></div><div id="payment-agreement"></div><button id="toss-pay-button" class="primary" type="button">' + paymentText.pay + '</button>';
@@ -48,16 +55,20 @@ async function setupPayment() {
     if (!config.clientKey) throw Error(config.error || 'payment unavailable');
     await loadTossSdk();
     const widgets = TossPayments(config.clientKey).widgets({ customerKey: crypto.randomUUID() });
-    await widgets.setAmount({ currency: 'KRW', value: cart.total });
+    await widgets.setAmount({ currency: 'KRW', value: payableAmount });
     await widgets.renderPaymentMethods({ selector: '#payment-methods' });
     await widgets.renderAgreement({ selector: '#payment-agreement' });
     button.disabled = false;
     button.onclick = async () => {
       button.disabled = true;
-      const orderResponse = await fetch('/api/orders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) });
-      const order = await orderResponse.json();
-      if (!orderResponse.ok) throw Error(order.error || 'order failed');
-      await widgets.requestPayment({ orderId: order.orderId, orderName: '\uC1FC\uD551\uBAB0 \uC8FC\uBB38', successUrl: `${location.origin}/cart`, failUrl: `${location.origin}/cart` });
+      let orderId = resumeOrderId;
+      if (!orderId) {
+        const orderResponse = await fetch('/api/orders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) });
+        const order = await orderResponse.json();
+        if (!orderResponse.ok) throw Error(order.error || 'order failed');
+        orderId = order.orderId;
+      }
+      await widgets.requestPayment({ orderId, orderName: '\uC1FC\uD551\uBAB0 \uC8FC\uBB38', successUrl: `${location.origin}/cart`, failUrl: `${location.origin}/cart` });
     };
   } catch (error) {
     button.textContent = paymentText.loading;

@@ -74,7 +74,7 @@ function renderAuthPage() {
       root.innerHTML = '<section class="shell auth-card"><h1>' + labels.mypage + '</h1><p>' + data.user.name + '\uB2D8</p><p>' + data.user.email + '</p><div id="my-orders"></div><button id="logout" class="primary">' + labels.logout + '</button></section>';
       req('/api/orders').then(orderData => {
         const list = orderData.orders || [];
-        document.querySelector('#my-orders').innerHTML = list.length ? '<h2>\uC8FC\uBB38 \uB0B4\uC5ED</h2>' + list.map(order => '<p>' + order.id.slice(0, 8) + ' · ' + (order.status === 'paid' ? '\uACB0\uC81C\uC644\uB8CC' : '\uACB0\uC81C\uB300\uAE30') + ' · ' + Number(order.total).toLocaleString('ko-KR') + '\uC6D0</p>').join('') : '';
+        document.querySelector('#my-orders').innerHTML = list.length ? '<h2>\uC8FC\uBB38 \uB0B4\uC5ED</h2>' + list.map(order => '<p>' + order.id.slice(0, 8) + ' · ' + (order.status === 'paid' ? '\uACB0\uC81C\uC644\uB8CC' : '\uACB0\uC81C\uB300\uAE30') + ' · ' + Number(order.total).toLocaleString('ko-KR') + '\uC6D0' + (order.status === 'pending' ? ' <a href="/cart?resumeOrder=' + encodeURIComponent(order.id) + '">\uACB0\uC81C \uACC4\uC18D\uD558\uAE30</a>' : '') + '</p>').join('') : '';
       });
       document.querySelector('#logout').onclick = async () => {
         await req('/api/auth/logout', { method: 'POST' });

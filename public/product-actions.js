@@ -5,19 +5,36 @@ const productActionText = {
   login: '\uC7A5\uBC14\uAD6C\uB2C8\uB97C \uC0AC\uC6A9\uD558\uB824\uBA74 \uB85C\uADF8\uC778\uC774 \uD544\uC694\uD569\uB2C8\uB2E4.',
 };
 let productActionPath = '';
+let productActionBuilding = null;
 
 async function enhanceProductDetail() {
-  if (!location.pathname.startsWith('/products/')) { productActionPath = ''; return; }
+  const path = location.pathname;
+  if (!path.startsWith('/products/')) { productActionPath = ''; productActionBuilding = null; return; }
   const info = document.querySelector('.detail-info');
-  if (!info || info.querySelector('#product-actions')) return;
-  const id = Number(location.pathname.split('/')[2]);
-  if (!Number.isInteger(id)) return;
-  const response = await fetch('/api/products/' + id);
-  if (!response.ok) return;
-  const data = await response.json();
-  const product = data.product;
-  if (!product) return;
-  productActionPath = location.pathname;
+  if (!info) return;
+  const existing = info.querySelectorAll('#product-actions');
+  if (existing.length) {
+    existing.forEach((node, index) => { if (index > 0) node.remove(); });
+    productActionPath = path;
+    productActionBuilding = null;
+    return;
+  }
+  if (productActionBuilding === path) return;
+  productActionBuilding = path;
+  const id = Number(path.split('/')[2]);
+  if (!Number.isInteger(id)) { productActionBuilding = null; return; }
+  let product;
+  try {
+    const response = await fetch('/api/products/' + id);
+    if (!response.ok) return;
+    const data = await response.json();
+    product = data.product;
+    if (!product || location.pathname !== path || document.querySelector('.detail-info') !== info) return;
+  } finally {
+    if (productActionBuilding === path) productActionBuilding = null;
+  }
+  if (!product || info.querySelector('#product-actions')) return;
+  productActionPath = path;
   const box = document.createElement('div');
   box.id = 'product-actions';
   box.innerHTML = '<label>' + productActionText.quantity + '</label><div><button type="button" id="qty-minus" aria-label="\uC218\uB7C9 \uC904\uC774\uAE30">−</button><input id="product-qty" type="number" min="1" max="99" value="1" aria-label="\uC218\uB7C9"><button type="button" id="qty-plus" aria-label="\uC218\uB7C9 \uB298\uB9AC\uAE30">+</button></div><p id="product-total"></p><button type="button" id="add-to-cart" class="primary">' + productActionText.add + '</button><p id="product-action-message" class="empty" role="status"></p>';
