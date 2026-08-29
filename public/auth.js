@@ -96,3 +96,6 @@ document.head.appendChild(paymentScript);
 const productActionScript = document.createElement('script');
 productActionScript.src = '/product-actions.js';
 document.head.appendChild(productActionScript);
+const aiIntroScript = document.createElement('script');
+aiIntroScript.src = '/ai-intro.js';
+document.head.appendChild(aiIntroScript);

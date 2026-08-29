@@ -17,6 +17,7 @@ async function handleApi(request, env, url) {
   if (url.pathname === "/api/auth/login" && method === "POST") return login(request, env, url);
   if (url.pathname === "/api/auth/logout" && method === "POST") return logout(request, env, url);
   if (url.pathname === "/api/auth/me" && method === "GET") return me(request, env);
+  if (url.pathname === "/api/ai/product-intro" && method === "POST") return productIntro(request, env);
   if (url.pathname === "/api/payments/config" && method === "GET") return paymentConfig(env);
   const protectedSession = await requireAuth(request, env);
   if (method === "GET" && url.pathname === "/api/orders") { if (!protectedSession) return json({ error: "login required" }, 401); const { results } = await env.DB.prepare("SELECT id, subtotal, discount_total, shipping_fee, total, status, payment_method, paid_at, created_at FROM orders WHERE session_id = ? ORDER BY created_at DESC").bind(protectedSession.id).all(); return json({ orders: results }); }
@@ -83,6 +84,21 @@ async function createOrder(request, env, session) {
   return json({ orderId, amount: cart.total }, 201);
 }
 
+async function productIntro(request, env) {
+  if (!env.AI) return json({ error: "AI is not configured" }, 503);
+  const body = await readJson(request);
+  const id = toPositiveInteger(body.productId);
+  if (!id) return json({ error: "invalid product" }, 400);
+  const product = await env.DB.prepare("SELECT name, short_description, description FROM products WHERE id = ? AND is_active = 1").bind(id).first();
+  if (!product) return json({ error: "product not found" }, 404);
+  const prompt = `Write a calm, factual English introduction for an online food product. Use only the supplied name and descriptions. Do not add origin, ingredients, certifications, health claims, quantities, or other facts that are not explicitly supplied. Use no more than three short sentences. Product name: ${product.name}\nShort description: ${product.short_description || ""}\nDescription: ${product.description || ""}`;
+  const result = await env.AI.run("@cf/meta/llama-3.1-8b-instruct", { prompt, max_tokens: 180 });
+  const text = String(result?.response || result || "").replace(/\s+/g, " ").trim();
+  const sentences = text.match(/[^.!?]+[.!?]+/g)?.slice(0, 3).join(" ").trim() || text;
+  if (!sentences) return json({ error: "AI returned no text" }, 502);
+  return json({ intro: sentences });
+}
+
 async function confirmPayment(request, env, session) {
   const body = await readJson(request);
   const orderId = String(body.orderId || "");
@@ -108,7 +124,6 @@ async function confirmPayment(request, env, session) {
   await env.DB.prepare("DELETE FROM cart_items WHERE session_id = ? AND product_id IN (SELECT product_id FROM order_items WHERE order_id = ?)").bind(session.id, orderId).run();
   return json({ ok: true, orderId, status: "paid" });
 }
-
 
 
 
