@@ -91,13 +91,14 @@ async function productIntro(request, env) {
   if (!id) return json({ error: "invalid product" }, 400);
   const product = await env.DB.prepare("SELECT name, short_description, description FROM products WHERE id = ? AND is_active = 1").bind(id).first();
   if (!product) return json({ error: "product not found" }, 404);
-  const prompt = `Write a calm, factual English introduction for an online food product. Use only the supplied name and descriptions. Do not add origin, ingredients, certifications, health claims, quantities, or other facts that are not explicitly supplied. Use no more than three short sentences. Product name: ${product.name}\nShort description: ${product.short_description || ""}\nDescription: ${product.description || ""}`;
+  const prompt = `Write only a calm, factual English introduction for an online food product. Return plain prose with no headings, labels, notes, prefixes, or field names. Use only the supplied name and descriptions. Do not add origin, ingredients, certifications, health claims, quantities, or other facts that are not explicitly supplied. Use no more than three complete sentences. Product name: ${product.name}\nShort description: ${product.short_description || ""}\nDescription: ${product.description || ""}`;
   const result = await env.AI.run("@cf/meta/llama-3.1-8b-instruct-fast", { prompt, max_tokens: 180 });
   let text = String(result?.response || result || "").replace(/\s+/g, " ").trim();
   const marker = text.toLowerCase().lastIndexOf("translation:");
   if (marker >= 0) text = text.slice(marker + "translation:".length).trim();
+  text = text.replace(/\b(?:Product name|Short description|Description|Note)\s*:\s*/gi, "").trim();
   const sentences = (text.match(/[^.!?]+[.!?]+/g) || [])
-    .filter((sentence) => /[A-Za-z]/.test(sentence))
+    .filter((sentence) => /[A-Za-z]/.test(sentence) && !/[가-힣]/.test(sentence))
     .slice(0, 3)
     .join(" ")
     .trim();
