@@ -92,7 +92,7 @@ async function productIntro(request, env) {
   const product = await env.DB.prepare("SELECT name, short_description, description FROM products WHERE id = ? AND is_active = 1").bind(id).first();
   if (!product) return json({ error: "product not found" }, 404);
   const prompt = `Translate the supplied product name and descriptions into a calm, factual English introduction. Return only the introduction itself as exactly two or three complete sentences of plain prose. Never output the product name on its own. Do not include headings, labels, notes, prefixes, or field names such as Translated, Translation, English, Introduction, Product name, Short description, Description, or Note. Do not infer or add any adjective, adverb, cuisine, origin, ingredients, certifications, health claims, quantities, quality claims, taste, aroma, texture, or marketing phrase. Use only direct facts explicitly present in the supplied text. Do not repeat a sentence or noun phrase. Product name: ${product.name}\nShort description: ${product.short_description || ""}\nDescription: ${product.description || ""}`;
-  const result = await env.AI.run("@cf/meta/llama-3.1-8b-instruct-fast", { prompt, max_tokens: 180, temperature: 0, top_p: 0.1 });
+  const result = await env.AI.run("@cf/meta/llama-3.1-8b-instruct-fast", { prompt, max_tokens: 180 });
   let text = String(result?.response || result || "").replace(/\s+/g, " ").trim();
   text = text.replace(/(?:^|\s)(?:Translated|Translation|English(?:\s+Introduction)?|Introduction|Product name|Short description|Description|Note)\s*:?\s*(?=[A-Z])/gi, " ").trim();
   const candidates = (text.match(/[^.!?]+[.!?]+/g) || [])
